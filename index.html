@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Merchant Leads Dashboard — Bank Mandiri KCP Jakarta S. Parman</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:       #0A1628;
+      --navy-mid:   #112240;
+      --navy-light: #1B3460;
+      --gold:       #C9961A;
+      --gold-light: #F5C842;
+      --gold-pale:  #FDF6E3;
+      --white:      #FFFFFF;
+      --off-white:  #F4F6FA;
+      --muted:      #8A93A8;
+      --border:     #E2E8F0;
+      --green:      #0F7B55;
+      --green-bg:   #E6F5F0;
+      --amber:      #92400E;
+      --amber-bg:   #FEF3C7;
+      --red:        #9B1C1C;
+      --red-bg:     #FEE2E2;
+      --blue:       #1E3A8A;
+      --blue-bg:    #EFF6FF;
+      --purple:     #5B21B6;
+      --purple-bg:  #EDE9FE;
+      --font: 'DM Sans', sans-serif;
+      --mono: 'DM Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--off-white);
+      color: var(--navy);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════ SIDEBAR ═══════════════ */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 240px; min-width: 240px;
+      background: var(--navy);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0;
+      height: 100vh; z-index: 200; overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .brand-badge {
+      display: inline-block; background: var(--gold); color: var(--navy);
+      font-weight: 700; font-size: 11px; letter-spacing: 1.5px;
+      padding: 4px 10px; border-radius: 4px; margin-bottom: 12px; text-transform: uppercase;
+    }
+    .brand-title { color: var(--white); font-size: 14px; font-weight: 600; line-height: 1.4; }
+    .brand-sub   { color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.5; }
+
+    .sidebar-nav { padding: 20px 0; flex: 1; }
+    .nav-label {
+      font-size: 10px; letter-spacing: 1.2px; color: var(--muted);
+      text-transform: uppercase; padding: 0 24px; margin-bottom: 6px; margin-top: 16px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 24px; color: rgba(255,255,255,0.55);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all 0.15s; text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .nav-item.active { color: var(--gold-light); border-left-color: var(--gold); background: rgba(201,150,26,0.08); }
+    .nav-icon { width: 16px; height: 16px; opacity: 0.8; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.07);
+      color: var(--muted); font-size: 11px; line-height: 1.6;
+    }
+    #sidebar-date { color: rgba(255,255,255,0.35); font-size: 10.5px; margin-top: 4px; }
+
+    /* ═══════════════ MAIN ═══════════════ */
+    .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; }
+
+    .topbar {
+      background: var(--white); border-bottom: 1px solid var(--border);
+      padding: 0 32px; height: 60px; display: flex; align-items: center;
+      justify-content: space-between; position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-pill {
+      background: var(--gold-pale); border: 1px solid var(--gold);
+      color: var(--gold); font-size: 11px; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px; letter-spacing: 0.3px;
+    }
+    /* Live badge */
+    .live-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      color: #166534; font-size: 11px; font-weight: 600;
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      animation: livepulse 1.8s infinite;
+    }
+    @keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
+
+    .content { padding: 28px 32px 48px; flex: 1; }
+
+    .section-head {
+      display: flex; align-items: baseline; gap: 12px;
+      margin-bottom: 16px; margin-top: 32px;
+    }
+    .section-head:first-child { margin-top: 0; }
+    .section-head h2 {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--navy);
+    }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .section-count { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+    /* ═══════════════ STATS ═══════════════ */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; margin-bottom: 28px;
+    }
+    @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:700px) {.stats-grid{grid-template-columns:repeat(2,1fr)}}
+
+    .stat-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 16px 14px; position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content:''; position:absolute; top:0;left:0;right:0; height:3px; border-radius:10px 10px 0 0;
+    }
+    .stat-card.s-total::before { background:var(--navy); }
+    .stat-card.s-done::before  { background:var(--green); }
+    .stat-card.s-belum::before { background:var(--gold); }
+    .stat-card.s-visit::before { background:var(--blue); }
+    .stat-card.s-tolak::before { background:#DC2626; }
+    .stat-card.s-tutup::before { background:var(--muted); }
+
+    .stat-num {
+      font-size: 32px; font-weight: 700; line-height: 1;
+      font-family: var(--mono); margin-bottom: 6px;
+    }
+    .s-total .stat-num { color:var(--navy); }
+    .s-done  .stat-num { color:var(--green); }
+    .s-belum .stat-num { color:var(--gold); }
+    .s-visit .stat-num { color:var(--blue); }
+    .s-tolak .stat-num { color:#DC2626; }
+    .s-tutup .stat-num { color:var(--muted); }
+
+    .stat-label {
+      font-size:11px; color:var(--muted); font-weight:500;
+      text-transform:uppercase; letter-spacing:0.5px;
+    }
+
+    /* ═══════════════ PETA LEAFLET ═══════════════ */
+    .peta-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 28px;
+    }
+    .peta-card-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .peta-card-title {
+      font-size: 12px; font-weight: 600; color: var(--navy);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .embed-dot { width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block; }
+    .peta-card-actions { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+
+    /* Map filter pills */
+    .map-filters { display:flex;gap:6px;flex-wrap:wrap; }
+    .map-fpill {
+      padding: 4px 12px; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--white);
+      font-size: 11.5px; font-weight: 600; cursor: pointer;
+      color: var(--muted); transition: all 0.15s; white-space: nowrap;
+      display: flex; align-items: center; gap: 4px;
+      font-family: var(--font);
+    }
+    .map-fpill:hover { border-color: var(--navy); color: var(--navy); }
+    .map-fpill.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+    .map-fpill .fc { font-family:var(--mono); font-size:10px; }
+
+    #map { width:100%; height:460px; z-index:1; }
+
+    /* Map loading */
+    .map-wrap { position:relative; }
+    .map-overlay {
+      position:absolute;inset:0;background:rgba(255,255,255,0.9);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:999;gap:12px;
+    }
+    .map-overlay.hidden { display:none; }
+    .spinner {
+      width:34px;height:34px;border:3px solid var(--border);
+      border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .map-overlay p { font-size:13px;color:var(--muted);font-weight:500; }
+
+    /* Map footer stats */
+    .map-footer {
+      display:flex;border-top:1px solid var(--border);overflow-x:auto;
+    }
+    .map-fstat {
+      flex:1;min-width:80px;text-align:center;
+      padding:9px 8px;border-right:1px solid var(--border);
+    }
+    .map-fstat:last-child{border-right:none;}
+    .map-fnum { font-size:18px;font-weight:700;font-family:var(--mono);line-height:1.1; }
+    .map-flabel { font-size:10px;color:var(--muted);font-weight:500;margin-top:2px; }
+
+    /* ═══════════════ SPREADSHEET EMBED ═══════════════ */
+    .embed-card {
+      background:var(--white);border:1px solid var(--border);
+      border-radius:10px;overflow:hidden;margin-bottom:28px;
+    }
+    .embed-card-header {
+      padding:12px 16px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+    }
+    .embed-card-title {
+      font-size:12px;font-weight:600;color:var(--navy);
+      text-transform:uppercase;letter-spacing:0.6px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .embed-card iframe { width:100%;height:400px;border:none;display:block; }
+
+    /* ═══════════════ BUTTONS ═══════════════ */
+    .btn-edit {
+      display:inline-flex;align-items:center;gap:6px;
+      font-family:var(--font);font-size:11.5px;font-weight:600;
+      padding:5px 12px;border-radius:6px;cursor:pointer;
+      text-decoration:none;transition:all 0.15s;border:none;
+    }
+    .btn-edit-primary { background:var(--gold);color:var(--navy); }
+    .btn-edit-primary:hover { background:var(--gold-light); }
+    .btn-edit-ghost { background:transparent;color:var(--muted);border:1px solid var(--border); }
+    .btn-edit-ghost:hover { border-color:var(--navy);color:var(--navy); }
+    .btn-edit svg { width:13px;height:13px;flex-shrink:0; }
+    .btn-edit.spinning svg { animation:spin .5s linear infinite; }
+
+    .refresh-hint {
+      font-size:11px;color:var(--muted);font-style:italic;
+      display:flex;align-items:center;gap:4px;
+    }
+    .refresh-hint svg{width:11px;height:11px;opacity:0.6;}
+
+    /* ═══════════════ TABLE ═══════════════ */
+    .table-card { background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden; }
+    .filter-row {
+      padding:14px 16px;border-bottom:1px solid var(--border);
+      display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#FAFBFD;
+    }
+    .filter-group { display:flex;align-items:center;gap:6px; }
+    .filter-group label {
+      font-size:11px;font-weight:600;color:var(--muted);
+      text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;
+    }
+    .filter-group select,.filter-group input {
+      font-family:var(--font);font-size:12.5px;border:1px solid var(--border);
+      border-radius:6px;padding:6px 10px;background:var(--white);color:var(--navy);
+      outline:none;transition:border-color 0.15s;
+    }
+    .filter-group select:focus,.filter-group input:focus{border-color:var(--navy);}
+    .filter-group input[type=text]{min-width:220px;}
+    .filter-divider{width:1px;height:20px;background:var(--border);}
+    .btn-reset {
+      font-family:var(--font);font-size:12px;font-weight:500;
+      color:var(--muted);background:none;border:1px solid var(--border);
+      border-radius:6px;padding:6px 12px;cursor:pointer;transition:all 0.15s;
+    }
+    .btn-reset:hover{border-color:var(--navy);color:var(--navy);}
+
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    thead{background:var(--navy);}
+    thead th{
+      padding:11px 14px;text-align:left;color:rgba(255,255,255,0.7);
+      font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.7px;white-space:nowrap;
+    }
+    thead th:first-child{color:rgba(255,255,255,0.35);}
+    tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:#F8FAFF;}
+    tbody td{padding:10px 14px;color:#374151;vertical-align:middle;}
+    tbody td:first-child{font-family:var(--mono);font-size:11px;color:var(--muted);}
+    td.td-name{font-weight:600;color:var(--navy);min-width:130px;}
+    td.td-addr{font-size:11.5px;color:#4B5563;min-width:200px;line-height:1.5;}
+    td.td-notes{font-size:11.5px;color:var(--muted);font-style:italic;}
+
+    .badge{
+      display:inline-flex;align-items:center;padding:3px 9px;
+      border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:0.2px;
+    }
+    .b-done    {background:var(--green-bg);color:var(--green);}
+    .b-belum   {background:var(--amber-bg);color:var(--amber);}
+    .b-visit   {background:var(--purple-bg);color:var(--purple);}
+    .b-default {background:var(--off-white);color:var(--muted);border:1px solid var(--border);}
+
+    .cat-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:0.2px;}
+    .c-kuliner    {background:#FEE2E2;color:#991B1B;}
+    .c-belanja    {background:var(--blue-bg);color:var(--blue);}
+    .c-jasa       {background:var(--green-bg);color:var(--green);}
+    .c-perjalanan {background:var(--amber-bg);color:var(--amber);}
+    .c-default    {background:var(--off-white);color:var(--muted);}
+
+    .no-results{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+
+    /* Table loading */
+    .table-loading{padding:32px;text-align:center;color:var(--muted);font-size:13px;}
+
+    /* Popup Leaflet */
+    .leaflet-popup-content{margin:12px 14px;min-width:210px;}
+    .popup-nama{font-weight:700;font-size:14px;color:var(--navy);margin-bottom:8px;font-family:'DM Sans',sans-serif;}
+    .popup-row{display:flex;gap:6px;align-items:flex-start;font-size:12px;color:#475569;margin-bottom:4px;font-family:'DM Sans',sans-serif;}
+    .popup-row span:first-child{min-width:58px;font-weight:600;color:#94a3b8;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;}
+    .popup-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+    .pbadge-done  {background:#dcfce7;color:#166534;}
+    .pbadge-belum {background:#fef9c3;color:#854d0e;}
+    .pbadge-tolak {background:#fee2e2;color:#991b1b;}
+    .pbadge-def   {background:#f1f5f9;color:#475569;}
+
+    @media(max-width:768px){
+      .sidebar{display:none;}
+      .main{margin-left:0;}
+      .content{padding:16px;}
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-badge">Bank Mandiri</div>
+      <div class="brand-title">GMM Merchant<br>Dashboard</div>
+      <div class="brand-sub">KCP Jakarta S. Parman</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Menu</div>
+      <a class="nav-item active" href="#overview">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </a>
+      <a class="nav-item" href="#peta">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        Peta Lokasi
+      </a>
+      <a class="nav-item" href="#spreadsheet">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Spreadsheet
+      </a>
+      <a class="nav-item" href="#data">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Data Leads
+      </a>
+      <div class="nav-label" style="margin-top:24px">Info</div>
+      <div class="nav-item" style="cursor:default;pointer-events:none">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span style="font-size:11px;color:rgba(255,255,255,0.35)">Data per kunjungan<br>lapangan tim KCP</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div>Integrated Branch Leads Mapping</div>
+      <div id="sidebar-date"></div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Integrated Branch Leads Mapping — KCP Jakarta S. Parman</div>
+      <div class="topbar-right">
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          <span id="last-sync">Memuat...</span>
+        </div>
+        <div class="topbar-pill" id="topbar-date"></div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- STATS -->
+      <div id="overview" class="section-head">
+        <h2>Ringkasan</h2>
+        <div class="section-line"></div>
+        <div class="section-count" id="count-label"></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card s-total"><div class="stat-num" id="s-total">—</div><div class="stat-label">Total Leads</div></div>
+        <div class="stat-card s-done"> <div class="stat-num" id="s-done">—</div> <div class="stat-label">Done Akuisisi</div></div>
+        <div class="stat-card s-belum"><div class="stat-num" id="s-belum">—</div><div class="stat-label">Belum EDC/QR</div></div>
+        <div class="stat-card s-visit"><div class="stat-num" id="s-visit">—</div><div class="stat-label">Sudah Visit</div></div>
+        <div class="stat-card s-tolak"><div class="stat-num" id="s-tolak">—</div><div class="stat-label">Menolak</div></div>
+        <div class="stat-card s-tutup"><div class="stat-num" id="s-tutup">—</div><div class="stat-label">Tutup Permanen</div></div>
+      </div>
+
+      <!-- PETA LEAFLET -->
+      <div id="peta" class="section-head">
+        <h2>Peta Lokasi</h2>
+        <div class="section-line"></div>
+        <div class="section-count">Real-time · Leaflet</div>
+      </div>
+
+      <div class="peta-card">
+        <div class="peta-card-header">
+          <div class="peta-card-title">
+            <span class="embed-dot"></span>
+            Sebaran Merchant — S. Parman
+          </div>
+          <div class="peta-card-actions">
+            <div class="map-filters">
+              <button class="map-fpill active" data-f="semua"      onclick="setMapFilter('semua',this)">🗺️ Semua <span class="fc" id="mfc-semua">—</span></button>
+              <button class="map-fpill"        data-f="done"       onclick="setMapFilter('done',this)">✅ Done <span class="fc" id="mfc-done">—</span></button>
+              <button class="map-fpill"        data-f="belum"      onclick="setMapFilter('belum',this)">⏳ Belum EDC <span class="fc" id="mfc-belum">—</span></button>
+              <button class="map-fpill"        data-f="sudah-visit" onclick="setMapFilter('sudah-visit',this)">👀 Sudah Visit <span class="fc" id="mfc-visit">—</span></button>
+              <button class="map-fpill"        data-f="belum-visit" onclick="setMapFilter('belum-visit',this)">📋 Belum Visit <span class="fc" id="mfc-bvisit">—</span></button>
+            </div>
+            <button class="btn-edit btn-edit-ghost" id="btn-map-refresh" onclick="loadSheetData()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="map-wrap">
+          <div id="map"></div>
+          <div class="map-overlay" id="map-overlay">
+            <div class="spinner"></div>
+            <p>Memuat data dari Google Sheets...</p>
+          </div>
+        </div>
+
+        <div class="map-footer">
+          <div class="map-fstat"><div class="map-fnum" id="mf-total" style="color:var(--navy)">—</div><div class="map-flabel">Total Leads</div></div>
+          <div class="map-fstat"><div class="map-fnum" id="mf-done"  style="color:var(--green)">—</div><div class="map-flabel">Done Akuisisi</div></div>
+          <div class="map-fstat"><div class="map-fnum" id="mf-belum" style="color:var(--gold)">—</div><div class="map-flabel">Belum EDC/QR</div></div>
+          <div class="map-fstat"><div class="map-fnum" id="mf-visit" style="color:var(--blue)">—</div><div class="map-flabel">Sudah Visit</div></div>
+          <div class="map-fstat"><div class="map-fnum" id="mf-nocoord" style="color:var(--muted)">—</div><div class="map-flabel">Belum Koordinat</div></div>
+        </div>
+      </div>
+
+      <!-- SPREADSHEET EMBED -->
+      <div id="spreadsheet" class="section-head">
+        <h2>Spreadsheet</h2>
+        <div class="section-line"></div>
+        <div class="section-count">Google Sheets</div>
+      </div>
+      <div class="embed-card">
+        <div class="embed-card-header">
+          <div class="embed-card-title">
+            <span class="embed-dot"></span>
+            Data Leads GMM Merchant
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="refresh-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Auto-update setelah simpan
+            </span>
+            <button class="btn-edit btn-edit-ghost" onclick="reloadFrame('sheet-frame')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
+            <a class="btn-edit btn-edit-primary" href="https://docs.google.com/spreadsheets/d/1t5D-W2gsJNL6jpxSAR01mlvJx7HPDK2Yk_wOW9V-cQA/edit?gid=1878177433" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit di Google Sheets
+            </a>
+          </div>
+        </div>
+        <iframe id="sheet-frame"
+          src="https://docs.google.com/spreadsheets/d/1t5D-W2gsJNL6jpxSAR01mlvJx7HPDK2Yk_wOW9V-cQA/htmlview?gid=1878177433"
+          title="Spreadsheet Data Leads">
+        </iframe>
+      </div>
+
+      <!-- DATA TABLE -->
+      <div id="data" class="section-head">
+        <h2>Data Leads</h2>
+        <div class="section-line"></div>
+        <div class="section-count" id="table-count"></div>
+      </div>
+      <div class="table-card">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Cari</label>
+            <input type="text" id="f-search" placeholder="Nama merchant, alamat, notes..." oninput="filterTable()"/>
+          </div>
+          <div class="filter-divider"></div>
+          <div class="filter-group">
+            <label>Kategori</label>
+            <select id="f-kat" onchange="filterTable()">
+              <option value="">Semua</option>
+              <option>Kuliner</option>
+              <option>Belanja</option>
+              <option>Jasa</option>
+              <option>Perjalanan</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="f-status" onchange="filterTable()">
+              <option value="">Semua</option>
+              <option>Done Akuisisi</option>
+              <option>Belum ada EDC/QR Mandiri</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Visit</label>
+            <select id="f-visit" onchange="filterTable()">
+              <option value="">Semua</option>
+              <option>Sudah visit</option>
+              <option>Belum visit</option>
+            </select>
+          </div>
+          <div class="filter-divider"></div>
+          <button class="btn-reset" onclick="resetFilters()">Reset</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Nama Merchant</th><th>Kategori</th><th>Alamat</th>
+                <th>PIC</th><th>Status Merchant</th><th>EDC</th><th>LVM</th>
+                <th>Status Visit</th><th>Last Update</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="11" class="table-loading">Memuat data...</td></tr>
+            </tbody>
+          </table>
+          <div class="no-results" id="no-results" style="display:none">
+            Tidak ada data yang sesuai dengan filter yang dipilih.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ================================================================
+// KONFIGURASI — edit di sini jika Sheet ID atau GID berubah
+// ================================================================
+const SHEET_ID = '1t5D-W2gsJNL6jpxSAR01mlvJx7HPDK2Yk_wOW9V-cQA';
+const GID      = '1878177433';
+
+// Kolom CSV (0-based). Sesuaikan jika urutan kolom di Sheets berbeda.
+// Berdasarkan screenshot: A=No, B=Nama, C=?, D=Alamat, E=PIC,
+// F=Potensi Individu, G=Potensi Payroll, H=Status Visit,
+// I=Last Update, J=Status Akuisisi, K=Notes, L=Latitude, M=Longitude
+const C = {
+  NO:     0,
+  NAMA:   1,
+  KAT:    2,
+  ALAMAT: 3,
+  PIC:    4,
+  VISIT:  7,
+  UPDATE: 8,
+  STATUS: 9,
+  NOTES:  10,
+  LAT:    11,
+  LNG:    12,
+};
+
+const HEADER_ROWS  = 2;   // berapa baris header di Sheets (baris 1+2 = 2)
+const AUTO_REFRESH = 60000; // ms — refresh otomatis tiap 60 detik
+// ================================================================
+
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+let allData      = [];
+let mapFilter    = 'semua';
+let leafletMap, markersLayer;
+
+// ── DATE ────────────────────────────────────────────────────────
+const now = new Date();
+const locale = 'id-ID';
+document.getElementById('sidebar-date').textContent =
+  now.toLocaleDateString(locale,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const shortDate = now.toLocaleDateString(locale,{day:'numeric',month:'short',year:'numeric'});
+document.getElementById('topbar-date').textContent  = shortDate;
+document.getElementById('count-label').textContent  = 'per ' + shortDate;
+
+// ── INIT MAP ────────────────────────────────────────────────────
+function initMap() {
+  leafletMap = L.map('map',{zoomControl:true}).setView([-6.195,106.793],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap © CARTO', maxZoom:19
+  }).addTo(leafletMap);
+  markersLayer = L.layerGroup().addTo(leafletMap);
+}
+
+// ── ICON ────────────────────────────────────────────────────────
+function makeIcon(status, visit) {
+  const s = (status||'').toLowerCase();
+  const v = (visit||'').toLowerCase();
+  let color = '#1E3A8A'; // default blue
+  if (s.includes('done'))   color = '#0F7B55'; // green
+  else if (s.includes('belum') && v.includes('sudah')) color = '#C9961A'; // gold
+  else if (s.includes('belum')) color = '#D97706'; // amber
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
+    <path d="M13 0C5.82 0 0 5.82 0 13c0 9.1 13 21 13 21S26 22.1 26 13C26 5.82 20.18 0 13 0z"
+      fill="${color}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+    <circle cx="13" cy="12.5" r="5" fill="white" opacity="0.85"/>
+  </svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[26,34],iconAnchor:[13,34],popupAnchor:[0,-34]});
+}
+
+// ── POPUP ───────────────────────────────────────────────────────
+function makePopup(r) {
+  const s = (r[C.STATUS]||'').toLowerCase();
+  let cls = 'pbadge-def';
+  if (s.includes('done'))  cls = 'pbadge-done';
+  else if (s.includes('belum')) cls = 'pbadge-belum';
+  else if (s.includes('tolak')) cls = 'pbadge-tolak';
+
+  return `<div class="popup-nama">${r[C.NAMA]||'—'}</div>
+    <div class="popup-row"><span>Alamat</span><span>${r[C.ALAMAT]||'—'}</span></div>
+    <div class="popup-row"><span>PIC</span><span>${r[C.PIC]||'—'}</span></div>
+    <div class="popup-row"><span>Status</span><span class="popup-badge ${cls}">${r[C.STATUS]||'—'}</span></div>
+    <div class="popup-row"><span>Visit</span><span>${r[C.VISIT]||'—'}</span></div>
+    ${r[C.NOTES]?`<div class="popup-row"><span>Notes</span><span>${r[C.NOTES]}</span></div>`:''}
+    <div class="popup-row"><span>Update</span><span>${r[C.UPDATE]||'—'}</span></div>`;
+}
+
+// ── RENDER MARKERS ──────────────────────────────────────────────
+function renderMarkers(rows) {
+  markersLayer.clearLayers();
+  const bounds = [];
+  rows.forEach(r => {
+    const lat = parseFloat(r[C.LAT]);
+    const lng = parseFloat(r[C.LNG]);
+    if (isNaN(lat)||isNaN(lng)) return;
+    const m = L.marker([lat,lng],{icon:makeIcon(r[C.STATUS],r[C.VISIT])});
+    m.bindPopup(makePopup(r),{maxWidth:280});
+    markersLayer.addLayer(m);
+    bounds.push([lat,lng]);
+  });
+  if (bounds.length>0) leafletMap.fitBounds(bounds,{padding:[40,40],maxZoom:15});
+}
+
+// ── MAP FILTER ──────────────────────────────────────────────────
+function setMapFilter(f, btn) {
+  mapFilter = f;
+  document.querySelectorAll('.map-fpill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyMapFilter();
+}
+
+function applyMapFilter() {
+  let rows = allData;
+  if (mapFilter==='done')
+    rows = allData.filter(r=>(r[C.STATUS]||'').toLowerCase().includes('done'));
+  else if (mapFilter==='belum')
+    rows = allData.filter(r=>(r[C.STATUS]||'').toLowerCase().includes('belum'));
+  else if (mapFilter==='sudah-visit')
+    rows = allData.filter(r=>(r[C.VISIT]||'').toLowerCase().includes('sudah'));
+  else if (mapFilter==='belum-visit')
+    rows = allData.filter(r=>!(r[C.VISIT]||'').toLowerCase().includes('sudah'));
+  renderMarkers(rows);
+}
+
+// ── UPDATE STATS ─────────────────────────────────────────────────
+function updateStats(data) {
+  const total   = data.length;
+  const done    = data.filter(r=>(r[C.STATUS]||'').toLowerCase().includes('done')).length;
+  const belum   = data.filter(r=>(r[C.STATUS]||'').toLowerCase().includes('belum')).length;
+  const visit   = data.filter(r=>(r[C.VISIT]||'').toLowerCase().includes('sudah')).length;
+  const tolak   = data.filter(r=>(r[C.NOTES]||'').toLowerCase().includes('menolak')).length;
+  const tutup   = data.filter(r=>(r[C.NOTES]||'').toLowerCase().includes('tutup')).length;
+  const nocoord = data.filter(r=>!parseFloat(r[C.LAT])||!parseFloat(r[C.LNG])).length;
+  const bvisit  = data.filter(r=>!(r[C.VISIT]||'').toLowerCase().includes('sudah')).length;
+
+  // Stat cards
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-done').textContent  = done;
+  document.getElementById('s-belum').textContent = belum;
+  document.getElementById('s-visit').textContent = visit;
+  document.getElementById('s-tolak').textContent = tolak;
+  document.getElementById('s-tutup').textContent = tutup;
+
+  // Map footer
+  document.getElementById('mf-total').textContent   = total;
+  document.getElementById('mf-done').textContent    = done;
+  document.getElementById('mf-belum').textContent   = belum;
+  document.getElementById('mf-visit').textContent   = visit;
+  document.getElementById('mf-nocoord').textContent = nocoord;
+
+  // Map filter pills count
+  document.getElementById('mfc-semua').textContent  = total;
+  document.getElementById('mfc-done').textContent   = done;
+  document.getElementById('mfc-belum').textContent  = belum;
+  document.getElementById('mfc-visit').textContent  = visit;
+  document.getElementById('mfc-bvisit').textContent = bvisit;
+
+  // Live sync time
+  const t = new Date();
+  const hms = [t.getHours(),t.getMinutes(),t.getSeconds()]
+    .map(n=>String(n).padStart(2,'0')).join(':');
+  document.getElementById('last-sync').textContent = 'Sync ' + hms;
+}
+
+// ── LOAD DATA ────────────────────────────────────────────────────
+function loadSheetData() {
+  const btn = document.getElementById('btn-map-refresh');
+  btn.classList.add('spinning');
+  document.getElementById('map-overlay').classList.remove('hidden');
+
+  const url = CSV_URL + '&cachebust=' + Date.now();
+
+  Papa.parse(url, {
+    download: true,
+    skipEmptyLines: true,
+    complete(res) {
+      const rows = res.data.slice(HEADER_ROWS).filter(r => r[C.NAMA] && r[C.NAMA].trim());
+      allData = rows;
+      updateStats(rows);
+      applyMapFilter();
+      filterTable();
+      document.getElementById('map-overlay').classList.add('hidden');
+      btn.classList.remove('spinning');
+    },
+    error(err) {
+      console.error('CSV error:', err);
+      document.getElementById('map-overlay').innerHTML =
+        '<p style="color:#DC2626;padding:20px">⚠️ Gagal memuat data. Pastikan Sheets sudah di-share publik.</p>';
+      btn.classList.remove('spinning');
+    }
+  });
+}
+
+// ── TABLE RENDER ─────────────────────────────────────────────────
+function statusBadge(s) {
+  if (!s) return dash();
+  if (s.includes('Done'))  return `<span class="badge b-done">Done Akuisisi</span>`;
+  if (s.includes('Belum')) return `<span class="badge b-belum">Belum EDC/QR</span>`;
+  return `<span class="badge b-default">${s}</span>`;
+}
+function visitBadge(v) {
+  if (!v) return dash();
+  if (v.toLowerCase().includes('sudah')) return `<span class="badge b-visit">Sudah Visit</span>`;
+  return `<span class="badge b-default">${v}</span>`;
+}
+function katBadge(k) {
+  const map = {Kuliner:'c-kuliner',Belanja:'c-belanja',Jasa:'c-jasa',Perjalanan:'c-perjalanan'};
+  return k ? `<span class="cat-badge ${map[k]||'c-default'}">${k}</span>` : dash();
+}
+function dash() { return `<span style="color:#C4CAD4">—</span>`; }
+
+function render(rows) {
+  const tbody = document.getElementById('tbody');
+  const noRes = document.getElementById('no-results');
+  document.getElementById('table-count').textContent = rows.length + ' entri';
+  if (!rows.length) { tbody.innerHTML=''; noRes.style.display=''; return; }
+  noRes.style.display = 'none';
+  tbody.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td>${r[C.NO]||i+1}</td>
+      <td class="td-name">${r[C.NAMA]||dash()}</td>
+      <td>${katBadge(r[C.KAT])}</td>
+      <td class="td-addr">${r[C.ALAMAT]||dash()}</td>
+      <td>${r[C.PIC]||dash()}</td>
+      <td>${statusBadge(r[C.STATUS])}</td>
+      <td>${dash()}</td>
+      <td>${dash()}</td>
+      <td>${visitBadge(r[C.VISIT])}</td>
+      <td style="white-space:nowrap;font-size:11.5px">${r[C.UPDATE]||dash()}</td>
+      <td class="td-notes">${r[C.NOTES]||''}</td>
+    </tr>`).join('');
+}
+
+function filterTable() {
+  const q = document.getElementById('f-search').value.toLowerCase();
+  const k = document.getElementById('f-kat').value;
+  const s = document.getElementById('f-status').value;
+  const v = document.getElementById('f-visit').value;
+  render(allData.filter(r =>
+    (!q || (r[C.NAMA]+r[C.ALAMAT]+r[C.NOTES]).toLowerCase().includes(q)) &&
+    (!k || (r[C.KAT]||'')=== k) &&
+    (!s || (r[C.STATUS]||'').includes(s.includes('Done')?'Done':'Belum')) &&
+    (!v || (r[C.VISIT]||'').toLowerCase().includes(v.toLowerCase().includes('sudah')?'sudah':'belum'))
+  ));
+}
+
+function resetFilters() {
+  ['f-search','f-kat','f-status','f-visit'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el.tagName==='INPUT') el.value=''; else el.value='';
+  });
+  render(allData);
+}
+
+// ── NAV SCROLL ───────────────────────────────────────────────────
+const sections = ['overview','peta','spreadsheet','data'];
+window.addEventListener('scroll',()=>{
+  let cur='overview';
+  sections.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el && window.scrollY >= el.offsetTop-100) cur=id;
+  });
+  document.querySelectorAll('.nav-item').forEach(a=>{
+    a.classList.toggle('active',a.getAttribute('href')==='#'+cur);
+  });
+});
+
+// ── IFRAME RELOAD ────────────────────────────────────────────────
+function reloadFrame(id) {
+  const f=document.getElementById(id), s=f.src;
+  f.src=''; setTimeout(()=>{f.src=s;},100);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────
+initMap();
+loadSheetData();
+setInterval(loadSheetData, AUTO_REFRESH);
+</script>
+</body>
+</html>
